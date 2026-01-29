@@ -87,7 +87,7 @@ async function main() {
     const scrapeResult = await scraper.scrapeChannel(
       userInput.serverId,
       userInput.channelId,
-      1000, // max messages
+      0, 
       userInput.timestampStart,
       userInput.timestampEnd
     );

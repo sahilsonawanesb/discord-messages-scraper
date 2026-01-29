@@ -52,7 +52,8 @@ export class DiscordScraper {
   async scrapeChannel(
     serverId: string,
     channelId: string,
-    maxMessages: number = 1000,
+    // maxMessages: number = 1000,
+    maxMessages : number = 0,
     timestampStart?: string,
     timestampEnd?: string
   ): Promise<ScraperResult> {
@@ -65,7 +66,7 @@ export class DiscordScraper {
       this.logger.logOperationStart("Discord Scraping", {
         serverId,
         channelId,
-        maxMessages,
+        maxMessages : maxMessages === 0 ? "UNLIMITED" : maxMessages,
         hasTimestampStart: !!timestampStart,
         hasTimestampEnd: !!timestampEnd
       });
@@ -91,7 +92,7 @@ export class DiscordScraper {
 
       // Fetch messages with pagination
       this.logger.info("Starting message fetch with pagination", {
-        maxMessages,
+        mode : maxMessages === 0 ? "UNLIMITED" : `LIMITED to ${maxMessages}`,
         startDate,
         endDate
       });
@@ -101,7 +102,11 @@ export class DiscordScraper {
         totalFetched: 0
       };
 
-      while (paginationState.hasMore && allMessages.length < maxMessages) {
+
+      let batchCount = 0;
+
+      // while (paginationState.hasMore && allMessages.length < maxMessages) {
+      while(paginationState.hasMore){
         const batch = await this.fetchMessageBatch(
           channelId,
           MESSAGE_LIMITS.MAX,
@@ -137,9 +142,12 @@ export class DiscordScraper {
         });
 
         // Check if we've reached the limit
-        if (allMessages.length >= maxMessages) {
+        // if (allMessages.length >= maxMessages) {
+        if(maxMessages > 0 && allMessages.length >= maxMessages){
           allMessages.splice(maxMessages);
           paginationState.hasMore = false;
+          this.logger.info(`Reached maximum messages limit: ${maxMessages}`);
+          break;
         }
 
         // Delay to avoid rate limiting
@@ -150,7 +158,9 @@ export class DiscordScraper {
 
       this.logger.logOperationEnd("Discord Scraping", Date.now() - startTime, {
         totalMessages: allMessages.length,
-        totalFetched: paginationState.totalFetched
+        totalFetched: paginationState.totalFetched,
+        batchCount : batchCount,
+        mode : maxMessages === 0 ? "UNLIMITED" : `LIMITED to ${maxMessages}`
       });
 
       return {
